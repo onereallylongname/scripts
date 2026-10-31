@@ -1,7 +1,31 @@
 # scripts
 My custom scripts and utils
 
-## TODO
+## Bash
+
+# A terminal spell-checking utility built around:
+#   - aspell   (suggestions)
+#   - fzf      (selection)
+#   - xclip    (clipboard)
+#   - dict     (dictionary)
+
+
+## Nushell
+
+### belp
+A wrapper for bat -l man.
+This is used to colorize auto-prompt for, paginate and colorize help text from cli applications.
+
+#### Usage
+
+> belp docker
+
+#### Dependencies
+
+[bat](https://github.com/sharkdp/bat)
+
+
+### todo
  Copy from [todone/scripts/todo.nu](https://github.com/onereallylongname/todone/tree/main/scripts)
 
 ***Not updated***

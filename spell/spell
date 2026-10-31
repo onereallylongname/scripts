@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+
+#
+# spell.sh
+#
+# A terminal spell-checking utility built around:
+#   - aspell   (suggestions)
+#   - fzf      (selection)
+#   - xclip    (clipboard)
+#   - dict     (dictionary)
+#
+# Install dictionaries:
+#   apt install aspell
+#   apt install aspell-en
+#   apt install aspell-pt
+#   apt install aspell-da
+#
+# Use aspell dump dicts to check installed languages
+#
+# Limitations:
+#   wn supports English only, so other languages
+#   do not have a dictionary functionality
+#
+# License: MIT
+#
+
+DATA_DIR="${HOME}/.local/share/spell"
+FREQ_FILE="${DATA_DIR}/freq.json"
+NO_STDIN=false
+FORCE_DICT=false
+CLIP=true
+ARGS=()
+ASPELL_LANG="en"
+DICT_LANG="english"
+
+#####################
+## Funcitons
+####################
+
+usage() {
+  cat <<EOF
+Usage:
+  spell [word]
+  echo word | spell
+
+Options:
+  --no-stdin       Ignore stdin and use arguments/prompt
+  --no-clip        Print selected word to the console instead of the clipboard
+  -d, --force-dict Force dictionary even if the work matches
+  -l, --lang       Choose the spelling language
+  -h               Show short usage
+  --help           Show full help message
+EOF
+}
+
+usage_intro() {
+  cat <<EOF
+A terminal spell-checking utility built around:
+  - aspell   (suggestions)
+  - fzf      (selection)
+  - xclip    (clipboard)
+  - dict     (dictionary)
+
+Meant for quick spell cheking from the confort of your terminal
+By default it copies the selectd work to you clipboard
+
+Install dictionaries:
+  apt install aspell
+  apt install aspell-en
+  apt install aspell-pt
+  apt install aspell-da
+  apt install ...
+
+  Use aspell dump dicts to check installed languages
+
+Limitations:
+  wn supports English only, so other languages
+  do not have a dictionary functionality
+
+EOF
+}
+
+copy_to_clipboard() {
+  echo -n "$1" | xclip -selection clipboard
+}
+
+get_aspell_result() {
+  local word="$1"
+
+  printf '%s\n' "$word" |
+    aspell --lang="$ASPELL_LANG" -a 2>/dev/null |
+    sed -n '2p'
+}
+
+get_suggestions_from_result() {
+  local result="$1"
+
+  printf '%s\n' "$result" |
+    sed 's/^&.*: //' |
+    tr ',' '\n' |
+    sed 's/^ *//' |
+    awk '!seen[$0]++'
+}
+#####################
+## Input parsing
+####################
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --no-stdin)
+    NO_STDIN=true
+    shift
+    ;;
+  --no-clip | -n)
+    CLIP=false
+    shift
+    ;;
+  --force-dict | -d)
+    FORCE_DICT=true
+    shift
+    ;;
+  --help)
+    usage_intro
+    usage
+    exit 0
+    ;;
+  -h)
+    usage
+    exit 0
+    ;;
+  --lang | -l)
+    [[ $# -lt 2 ]] && {
+      echo "spell: missing language after $1" >&2
+      exit 1
+    }
+
+    IFS=: read -r ASPELL_LANG DICT_LANG <<<"$2"
+    shift 2
+    ;;
+  *)
+    ARGS+=("$1")
+    shift
+    ;;
+  esac
+done
+
+#####################
+## Main logic
+####################
+
+WORD=""
+
+# stdin wins unless explicitly disabled
+if ! $NO_STDIN && [[ ! -t 0 ]]; then
+  read -r WORD
+  WORD="${WORD//$'\n'/}"
+elif [[ ${#ARGS[@]} -gt 0 ]]; then
+  WORD="${ARGS[0]}"
+else
+  read -rp 'spell: ' WORD
+fi
+
+# trim leading whitespace
+WORD="${WORD#"${WORD%%[![:space:]]*}"}"
+
+# trim trailing whitespace
+WORD="${WORD%"${WORD##*[![:space:]]}"}"
+
+# empty input -> nothing to do
+[[ -z "$WORD" ]] && {
+  echo "Nothing to parse" >&2
+  exit 1
+}
+
+ASPELL_RESULT="$(get_aspell_result "$WORD")"
+
+if [[ "$ASPELL_RESULT" == "*" ]]; then
+  if [[ "$FORCE_DICT" == "false" ]]; then
+    if [[ "$CLIP" == "false" ]]; then
+      printf '%s\n' "$WORD"
+    else
+      copy_to_clipboard "$WORD"
+    fi
+    exit 0
+  else
+    ASPELL_RESULT="$WORD"
+  fi
+fi
+
+CHOICE="$(
+  get_suggestions_from_result "$ASPELL_RESULT" |
+    fzf --layout=reverse --height=40% --border --preview-window='right:65%:wrap' --bind 'shift-up:preview-up,shift-down:preview-down' --preview "dict -f -d $DICT_LANG {}"
+)"
+
+[[ -z "$CHOICE" ]] && exit 0
+
+if [[ "$CLIP" == "false" ]]; then
+  printf '%s\n' "$CHOICE"
+else
+  copy_to_clipboard "$CHOICE"
+fi
