@@ -1,7 +1,10 @@
-# nushell-scripts
-My custom nushell scripts and utils
+# scripts
+My custom scripts and utils
 
 ## TODO
+ Copy from [todone/scripts/todo.nu](https://github.com/onereallylongname/todone/tree/main/scripts)
+
+***Not updated***
 
 A simple todo util to quickly keep track of simple tasks
 It uses a file (essentially a yaml list) to store quick notes
