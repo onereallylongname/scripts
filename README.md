@@ -3,6 +3,8 @@ My custom scripts and utils
 
 ## Bash
 
+### spell
+
 # A terminal spell-checking utility built around:
 #   - aspell   (suggestions)
 #   - fzf      (selection)
@@ -11,6 +13,10 @@ My custom scripts and utils
 
 
 ## Nushell
+
+### dc
+
+A helper for docker compose and lazydocker launcher.
 
 ### belp
 A wrapper for bat -l man.
